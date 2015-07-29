@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="{{ LANG }}" dir="{{ DIR }}" id="developer-mozilla-org">
+<html lang="{{ LANG }}" dir="{{ DIR }}">
 <head>
+  <meta charset="utf-8">
   <title>{% block title %}{{ _('Mozilla Developer Network') }}{% endblock %}</title>
-
-	<meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="MSSmartTagsPreventParsing" content="true">
   <meta name="ROBOTS" content="ALL">
@@ -15,82 +14,31 @@
   <link rel="shortcut icon" href="{{ MEDIA_URL }}img/favicon.ico"/>
 
   {% block site_css %}
-  <!--[if !IE 6]><!-->
   {{ css('mdn') }}
-  <!--<![endif]-->
-  <!--[if lte IE 7]><link rel="stylesheet" type="text/css" media="all" href="{{ MEDIA_URL }}css/ie7.css"><![endif]-->
-  <!--[if lte IE 6]><link rel="stylesheet" type="text/css" media="all" href="{{ MEDIA_URL }}css/ie6.css"><![endif]-->
-  <link rel="stylesheet" type="text/css" media="print" href="{{ MEDIA_URL }}css/print.css">
   {% endblock %}
 
-  <!--[if IE]>
+    <!--[if IE]>
   <meta http-equiv="imagetoolbar" content="no">
-  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
-  <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <script src="{{ MEDIA_URL }}js/libs/html5.js"></script>
   <![endif]-->
 
   {% block extrahead %}{% endblock %}
 </head>
 
-<body id="{% block pageid %}{% endblock %}" class="html-{{ DIR }} popup {% block bodyclass %}{% endblock %}" role="document">
+<body id="{% block body_attributes %}{% endblock %}" class="popup {% block bodyclass %}{% endblock %}">
 {% block content %}{% endblock %}
 
 {# js #}
+<script src="{{ url('jsi18n') }}build:{{ BUILD_ID_JS }}"></script>
+
 {% block site_js %}
-<script src="//www.google.com/jsapi" type="text/javascript"></script>
-  {{ js('common') }}
-<script type="text/javascript">
-$(document).ready(function() {
-  // Set up input placeholders.
-  $('input[placeholder]').placeholder();
-}); 
 
-/* Fake the placeholder attribute since Firefox doesn't support it. */
-jQuery.fn.placeholder = function(new_value) {
-  if (new_value) {
-    this.attr('placeholder', new_value);
-  }
+  {{ js('main') }}
 
-  /* Bail early if we have built-in placeholder support. */
-  if ('placeholder' in document.createElement('input')) {
-    return this;
-  }
+  {{ js('popup') }}
 
-  if (new_value && this.hasClass('placeholder')) {
-    this.val('').blur();
-  }
-
-  return this.focus(function() {
-    var $this = $(this),
-    text = $this.attr('placeholder');
-
-    if ($this.val() == text) {
-      $this.val('').removeClass('placeholder');
-    }
-  }).blur(function() {
-    var $this = $(this),
-    text = $this.attr('placeholder');
-
-    if ($this.val() == '') {
-      $this.val(text).addClass('placeholder');
-    }
-  }).each(function(){
-    /* Remove the placeholder text before submitting the form. */
-    var self = $(this);
-    self.closest('form').submit(function() {
-      if (self.hasClass('placeholder')) {
-        self.val('');
-      }
-    });
-  }).blur();
-};
-
-</script>
-  
 {% endblock %}
 {% block js %}{% endblock %}
 {# end js #}
-
-{% include "includes/webtrends.html" %}
 </body>
 </html>

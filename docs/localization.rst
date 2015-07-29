@@ -242,6 +242,7 @@ convert it to a ``unicode`` object::
         # Works:
         unicode(WELCOME) % request.user.username
 
+.. _get-localizations:
 
 Getting the Localizations
 =========================
@@ -265,34 +266,92 @@ if you're a git fan.)
 
 Updating the Localizations
 ==========================
+When we add or update strings, we need to update `Verbatim <http://localize.mozilla.org/>`_
+templates and PO files for localizers. If you commit changes to SVN without
+updating Verbatim, localizers will have merge head-aches.
 
-When strings are added or updated, we need to update the templates and PO files
-for localizers. This needs to be coordinated with someone who has rights to
-update the data on `Verbatim <http://localize.mozilla.org/>`_. If you commit
-new strings to SVN and they are not updated right away on Verbatim, there will
-be big merging headaches.
+1.  Check out the localizations (See `get-localizations`_)
 
-Updating strings is pretty easy. Check out the localizations as above, then::
+2.  Run the following in the virtual machine (see :doc:`installation`)::
 
-    $ python manage.py extract
-    $ python manage.py verbatimize --rename
+        $ python manage.py extract
 
-Congratulations! You've now updated the POT file.
+3.  Commit the POT file.
 
-Now commit the POT file to svn::
+    If you used ``svn checkout`` above::
 
-    $ cd locale
-    $ svn up
-    $ svn ci -m "MDN string update YYYY-MM-DD"
+        $ cd locale
+        $ svn up
+        $ svn ci -m "MDN string update YYYY-MM-DD"
 
-After committing, update the `templates in Verbatim
-<https://localize.mozilla.org/templates/mdn/>`_ from SVN.
+    If you used ``git svn clone`` above::
 
-![Updating verbatim templates from
-SVN](https://dl.dropbox.com/u/21969365/images/templates_mdn.png)
+        $ cd locale
+        $ git svn fetch
+        $ git add -A
+        $ git commit -m "MDN string update YYYY-MM-DD"
+        $ git svn dcommit
 
-After updating the templates in Verbatim, `update each language
-<https://localize.mozilla.org/projects/mdn/admin.html>`_ from the templates.
+.. note:: You need verbatim permissions for the following. If you don't have permissions, email `groovecoder <mailto:lcrouch@mozilla.com>`_ or `mathjazz <mailto:matjaz@mozilla.com>`_ to do the following ...
 
-![Updating messages from
-templates](https://dl.dropbox.com/u/21969365/images/mdn_admin_update.png)
+4.  Go to the `MDN templates on Verbatim
+    <https://localize.mozilla.org/templates/mdn/>`_
+
+5.  Click 'Update all from VCS'
+
+6.  ssh to sm-verbatim01 (See `L10n:Verbtim
+    <https://wiki.mozilla.org/L10n:Verbatim>`_ on wiki.mozilla.org)
+
+7.  Update all locales against templates::
+
+        sudo su verbatim
+        cd /data/www/localize.mozilla.org/verbatim/pootle_env/Pootle
+        POOTLE_SETTINGS=localsettings.py python2.6 manage.py
+        update_against_templates --project=mdn -v 2
+
+Adding a new Locale
+===================
+
+1.  Check out the localizations (See `get-localizations`_)
+
+2.  Follow `the "Add locale" instructions on wiki.mozilla.org
+    <https://wiki.mozilla.org/L10n:Verbatim#Adding_a_locale_to_a_Verbatim_project>`_.
+
+3.  Update your locale repo to get the new locale::
+
+        $ cd locale
+        $ svn up
+        $ cd ..
+
+4.  Update `languages.json` file via product details::
+
+        $ ./manage.py update_product_details
+        $ cp ../product_details_json/languages.json kuma/languages.json
+
+5.  Add the locale to `MDN_LANGUAGES` in `settings.py`
+
+6.  Verify django loads new locale without errors by visiting the locale's home
+    page. E.g., https://developer-local.allizom.org/ml/
+
+7.  BONUS: Use `podebug` to test a fake translation of the locale::
+
+        $ cd locale
+        $ podebug --rewrite=bracket templates/LC_MESSAGES/messages.pot
+        ml/LC_MESSAGES/messages.po
+        $ ./compile-mo.sh .
+
+    Restart the django server and re-visit the new locale to verify it shows
+    "translated" strings in the locale.
+
+8.  Update the `locale.tar.gz` and `product_details_json.tar.gz` files used by
+    `our Travis install script`_::
+
+        $ python manage.py update_product_details
+        $ tar -czf etc/data/product_details_json.tar.gz ../product_details_json/
+        $ tar -czf etc/data/locale.tar.gz locale/
+
+9.  Commit the changes to `settings.py`, `locale.tar.gz`, and
+    `product_details_json.tar.gz`
+
+
+.. _our Travis install script: https://github.com/mozilla/kuma/blob/master/scripts/travis-install

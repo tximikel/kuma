@@ -1,229 +1,215 @@
-// Use a global k to share data accross JS files
-k = {};
+(function(win, doc, $) {
+    'use strict';
 
-(function () {
-    k.LAZY_DELAY = 500;  // delay to lazy loading scripts, in ms
-    k.MEDIA_URL = '/media/';
+    /*
+        Track clientside errors
+    */
+    mdn.analytics.trackClientErrors();
 
-    $(document).ready(function() {
-        /* Focus form field when clicking on error message. */
-        $('#content ul.errorlist a').click(function () {
-                $($(this).attr('href')).focus();
-                return false;
-            });
+    /*
+        Submenus
+        - main and secondary navigation
+        - language and admin menus
+        - profile menu
+    */
 
-        if ($('body').data('readonly') == 'true') {
-            $forms = $('form[method=post]');
-            $forms.find('input, button, select, textarea').attr('disabled', 'disabled');
-            $forms.find('input[type=image]').css('opacity', .5);
-        }
+    (function() {
+        var $submenus = $('.js-submenu');
+        $submenus.prev('a, button').mozMenu();
+        $submenus.mozKeyboardNav();
+    })();
 
-        initAutoSubmitSelects();
-        initSearchAutoFilters();
-        disableFormsOnSubmit();
-        lazyLoadScripts();
+    /*
+        Search animation
+    */
+
+    (function() {
+        var $nav = $('#main-nav');
+        var $navItems = $nav.find('ul > li:not(.nav-search-link, .main-nav-search)');
+        var $mainNavSearch = $nav.find('.main-nav-search');
+        var $searchWrap = $nav.find('.search-wrap');
+        var $input = $searchWrap.find('input');
+        var $searchTrigger = $searchWrap.find('.search-trigger');
+        var placeholder = $input.attr('placeholder');
+
+        $searchTrigger.on('click', function(e) {
+            $input.get(0).focus();
+        });
+
+        var timeout;
+        var createExpander = function(isAdd) {
+            return function(e) {
+
+                if(isAdd) {
+                    $input.select();
+                }
+
+                // If we're on mobile, just let everything be
+                if($mainNavSearch.css('display') === 'block') {
+                    return;
+                }
+
+                if(e) e.preventDefault();
+                if(timeout) clearTimeout(timeout);
+                timeout = setTimeout(function() {
+                    if(isAdd) {
+                        $navItems.fadeOut(100, function() {
+                            $navItems.css('display', 'none');
+                            $searchWrap.addClass('expanded');
+                            $nav.addClass('expand');
+                        });
+                    }
+                    else {
+                        $nav.removeClass('expand');
+                        timeout = setTimeout(function() {
+                            $searchWrap.removeClass('expanded');
+                            $navItems.fadeIn(400);
+                        }, 250); // corresponds to length of CSS animation
+                    }
+                });
+            };
+        };
+
+        $input.
+            on('focus', createExpander(true)).
+            on('blur', createExpander());
+    })();
+
+    /*
+        Mobile search to display search box in menu
+    */
+    $('.nav-search-link a').on('click', function(e) {
+        e.preventDefault();
+        $('.main-nav-search').css('display', 'block').find('#main-q').get(0).focus();
+        $('.nav-search-link').css('display', 'none');
+    });
+
+
+    /*
+        Account for the footer language change dropdown and other dropdowns marked as autosubmit
+    */
+    $('select.autosubmit').on('change', function(){
+        this.form.submit();
     });
 
     /*
-     * Initialize some selects so that they auto-submit on change.
-     */
-    function initAutoSubmitSelects() {
-        $('select.autosubmit').change(function() {
-            $(this).closest('form').submit();
-        });
-    }
+        Disable forms when submitted
+    */
+    (function() {
+        var disabled = 'disabled';
 
-    function initSearchAutoFilters() {
-        var $browser = $('#browser'),
-            $os = $('#os'),
-            $search = $('.support-search form'),
-            for_os = $('body').data('for-os'),
-            for_version = $('body').data('for-version');
-
-        /**
-         * (Possibly create, and) update a hidden input on new search forms
-         * to filter based on Help With selections.
-         */
-        function updateAndCreateFilter(name, $source, data) {
-            $search.each(function(i, el) {
-                var $input = $(el).find('input[name='+name+']');
-                if (!$input.length) {
-                    $input = $('<input type="hidden" name="'+name+'">');
-                    $(el).prepend($input);
-                }
-                $input.val(data[$source.val()]);
-            });
-        }
-
-        /**
-         * Before submitting the form, update the hidden input values for
-         * browser version and OS.
-         */
-        $search.submit(function() {
-            if ($browser.length) {
-                updateAndCreateFilter('fx', $browser, for_version);
-            }
-            if ($os.length) {
-                updateAndCreateFilter('os', $os, for_os);
-            }
-        });
-    }
-
-    /*
-     * Disable forms on submit to avoid multiple POSTs when double+ clicking.
-     * Adds `disabled` CSS class to the form for optionally styling elements.
-     *
-     * NOTE: We can't disable the buttons because it prevents their name/value
-     * from being submitted and we depend on those in some views.
-     */
-    function disableFormsOnSubmit() {
-        $('form').submit(function(ev) {
+        $('form').on('submit', function(ev) {
             var $this = $(this);
 
             // Allow for a special CSS class to prevent this functionality
             if($this.hasClass('nodisable')) return;
 
-            if ($this.data('disabled')) {
+            if ($this.data(disabled)) {
                 ev.preventDefault();
             } else {
-                $this.data('disabled', true).addClass('disabled');
+                $this.data(disabled, true).addClass(disabled);
             }
 
             $this.ajaxComplete(function(){
-                $this.data('disabled', false).removeClass('disabled');
+                $this.data(disabled, false).removeClass(disabled);
                 $this.unbind('ajaxComplete');
             });
         });
-    }
+    })();
 
     /*
-     * This lazy loads our jQueryUI script.
-     */
-    function lazyLoadScripts() {
-        var scripts = ['js/libs/jqueryui.min.js'],
-            styles = [],  // was: ['css/jqueryui/jqueryui-min.css']
-                          // turns out this messes with search
-            i;
-
-        // Don't lazy load scripts that have already been loaded
-        $.each($('script'), function () {
-            var this_src = $(this).attr('src');
-            if (!this_src) return ;
-            remove_item(scripts, this_src);
-        });
-
-        // Don't lazy load stylesheets that have already been loaded
-        $.each($('link[rel="stylesheet"]'), function () {
-            remove_item(styles, $(this).attr('href'));
-        });
-
-        setTimeout(function lazyLoad() {
-            for (i in scripts) {
-                $.get(k.MEDIA_URL + scripts[i]);
+        Send Django CSRF with all AJAX requests
+    */
+    $(doc).ajaxSend(function(event, xhr, settings) {
+        function getCookie(name) {
+            var cookieValue = null;
+            if (doc.cookie && doc.cookie !== '') {
+                var cookies = doc.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = jQuery.trim(cookies[i]);
+                    // Does this cookie string begin with the name we want?
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
             }
-            for (i in styles) {
-                $('head').append(
-                    '<link rel="stylesheet" type="text/css" href="' +
-                    k.MEDIA_URL + styles[i] + '">');
-            }
-        }, k.LAZY_DELAY);
-    }
+            return cookieValue;
+        }
+        function sameOrigin(url) {
+            // url could be relative or scheme relative or absolute
+            var host = doc.location.host; // host + port
+            var protocol = doc.location.protocol;
+            var sr_origin = '//' + host;
+            var origin = protocol + sr_origin;
+            // Allow absolute or scheme relative URLs to same origin
+            return (url === origin || url.slice(0, origin.length + 1) === origin + '/') ||
+                (url === sr_origin || url.slice(0, sr_origin.length + 1) === sr_origin + '/') ||
+                // or any other URL that isn't scheme relative or absolute i.e relative.
+                !(/^(\/\/|http:|https:).*/.test(url));
+        }
+        function safeMethod(method) {
+            return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+        }
+
+        if (!safeMethod(settings.type) && sameOrigin(settings.url)) {
+            xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+        }
+    });
+
 
     /*
-     * Remove an item from a list if it matches the substring match_against.
-     * Caution: modifies from_list.
-     * E.g. list = ['string'], remove_item(list, 'str') => list is [].
-     */
-    function remove_item(from_list, match_against) {
-        match_against = match_against.toLowerCase();
-        for (var i in from_list) {
-            if (match_against.indexOf(from_list[i]) >= 0) {
-                from_list.splice(i, 1);
-            }
-        }
-    }
+        Skip to search and is better done with JS because it's sometimes hidden and shown
+        Skip to main is also better done with JS as it is configurable on the server side
+    */
+    $('#skip-search').on('click', function(e) {
+        e.preventDefault();
+        $('input[name=q]').last().get(0).focus();
+    });
+    $('#skip-main').each(function() { // Only one, so using each as closure
+        var id = this.href.split('#')[1];
+        if(id) $('#' + id).attr('role', 'main');
+    });
 
-})();
+    /*
+    Skip to select language doesn't work in fx without js
+    */
+    $('#skip-language').on('click', function(e) {
+        e.preventDefault();
+        $('#language').get(0).focus();
+    });
 
+    /*
+        Messages / Notifications -- show the initial ones
+    */
+    (function() {
+        // Find where we should put notifications
+        var insertLocation;
 
-/**
- * Handles autofill of text with default value for browsers that don't
- * support the HTML5 `placeholder` functionality.
- *
- * When an input field is empty, the default value (from `placeholder`
- * attribute) will be set on blur. Then, when focused, the value will
- * be set to empty.
- *
- */
- jQuery.fn.autoPlaceholderText = function () {
-
-    // check for html5 placeholder support and fallback to js solution
-    if (!Modernizr.input.placeholder) {
-
-        function onFocus() {
-            var $this = $(this);
-            if ($this.val() === $this.attr('placeholder')) {
-                $this.val('').addClass('placeholder-focused');
-            }
-        }
-
-        function onBlur() {
-            var $this = $(this);
-            if ($this.val() === '') {
-                $this.val($this.attr('placeholder')).removeClass('placeholder-focused');
-            }
-        }
-
-        this.each(function () {
-            var $this = $(this);
-            var placeholder = $this.attr('placeholder');
-            if (placeholder) {
-                if (!$this.val() || $this.val() === placeholder) {
-                    $this.val(placeholder).addClass('input-placeholder');
-                }
-                $this.focus(onFocus).blur(onBlur);
+        $.each([
+            { selector: '#wikiArticle', method: 'prependTo' },
+            { selector: '#home', method: 'prependTo' },
+            { selector: 'h1', method: 'insertAfter' },
+            { selector: 'body', method: 'prependTo' } // Default
+        ], function() {
+            if(!insertLocation && $(this.selector).length) {
+                insertLocation = this;
             }
         });
 
-    }
+        // Inject notifications
+        $.each(mdn.notifications || [], function() {
+            var encodedMessage = this.message;
+            var messageHTML = $('<div />').html(encodedMessage).text();
+            // Make it so
+            $('<div />').attr({
+                'class': 'notification ' + this.level + ' ' + this.tags,
+                'data-level': this.level
+            }).html(messageHTML)[insertLocation.method](insertLocation.selector);
+        });
 
-    return this;
-};
+        // Make them official
+        mdn.Notifier.discover();
+    })();
 
-// send django csrftoken with jquery ajax requests
-$(document).ajaxSend(function(event, xhr, settings) {
-    function getCookie(name) {
-        var cookieValue = null;
-        if (document.cookie && document.cookie != '') {
-            var cookies = document.cookie.split(';');
-            for (var i = 0; i < cookies.length; i++) {
-                var cookie = jQuery.trim(cookies[i]);
-                // Does this cookie string begin with the name we want?
-                if (cookie.substring(0, name.length + 1) == (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-    function sameOrigin(url) {
-        // url could be relative or scheme relative or absolute
-        var host = document.location.host; // host + port
-        var protocol = document.location.protocol;
-        var sr_origin = '//' + host;
-        var origin = protocol + sr_origin;
-        // Allow absolute or scheme relative URLs to same origin
-        return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
-            (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
-            // or any other URL that isn't scheme relative or absolute i.e relative.
-            !(/^(\/\/|http:|https:).*/.test(url));
-    }
-    function safeMethod(method) {
-        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
-    }
-
-    if (!safeMethod(settings.type) && sameOrigin(settings.url)) {
-        xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
-    }
-});
+})(window, document, jQuery);

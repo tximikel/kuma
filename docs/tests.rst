@@ -10,8 +10,8 @@ behavior--and new code should come with tests.
 Running the Test Suite
 ======================
 
-If you followed the steps in `the installation docs <installation.rst>`_, then
-all you should need to do to run the test suite is::
+If you followed the steps in :doc:`the installation docs <installation>`,
+then all you should need to do to run the test suite is::
 
     ./manage.py test
 
@@ -22,6 +22,9 @@ command to alias to something short::
 
 The ``-s`` flag is important if you want to be able to drop into PDB from
 within tests.
+
+Some tests will fail.  See `Running a Subset`_ below for running the subset
+that is expected to pass.
 
 Some other helpful flags are:
 
@@ -42,11 +45,15 @@ Running a Subset
 You can run part of the test suite by specifying the apps you want to run,
 like::
 
-    ./manage.py test wiki search kbforums
+    ./manage.py test kuma
 
 You can also exclude tests that match a regular expression with ``-e``::
 
-    ./manage.py test -e"sphinx"
+    ./manage.py test -e "search"
+
+To run the subset of tests that should pass::
+
+    ./manage.py test kuma
 
 See the output of ``./manage.py test --help`` for more arguments.
 
@@ -57,13 +64,6 @@ The Test Database
 The test suite will create a new database named ``test_%s`` where ``%s`` is
 whatever value you have for ``settings.DATABASES['default']['NAME']``. Make
 sure the user has ``ALL`` on the test database as well.
-
-When the schema changes, you may need to drop the test database. You can also
-run the test suite with ``FORCE_DB`` once to cause Django to drop and recreate
-it::
-
-    FORCE_DB=1 ./manage.py test -s --noinput --logging-clear-handlers
-
 
 Adding Tests
 ============

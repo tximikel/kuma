@@ -1,7 +1,12 @@
 <form class="languages go" method="get" action="#">
   <label for="language">{{ _('Other languages:') }}</label>
-  <select id="language" name="lang" dir="ltr">
-    {% for code, name in settings.LANGUAGE_CHOICES -%}
+  {% for name, value in request.GET.iteritems() %}
+    {% if name != 'lang' %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endif %}
+  {% endfor %}
+  <select id="language" class="autosubmit" name="lang">
+    {% for code, name in settings.LANGUAGES -%}
       <option value="{{ code }}" {{ code|ifeq(LANG, "selected") }}>
         {{ name }}
       </option>

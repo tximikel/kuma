@@ -1,36 +1,41 @@
-============
+===========
 Development
-============
+===========
 
-After you have completed the `manual installation steps <installation.rst>`_
-or set up the `Vagrant-managed VM <installation-vagrant.rst>`_), and are able
-to run Kuma using ``./manage.py runserver``, you can start contributing.
+We only support developing MDN with the :doc:`Vagrant-managed VM <installation>`.
 
 Running Kuma
 ============
 
-In addition to running the django app using ``./manage.py runserver``, you can run
-the kumascript service to enable wiki templates processing::
+You can start all Kuma servers and services with::
 
-    node kumascript/run.js
-
-...and `celery <celery.rst>`_ to enable background task processing (such as sending
-the e-mail notifications).
-Note that, before running the kumascript, you need to install the node.js ``fibers`` module
-by running ``npm install fibers``.
+    vagrant ssh
+    foreman start
 
 Log in
-------
+======
 
-You can log into the wiki using Persona or via the django admin interface.
-If you use the admin interface, you can log in as the user you created during installation
-or on the vagrant VM use login ``admin`` with password ``admin``.
+You can log into MDN using Persona or GitHub. For GitHub, you must first enable
+:ref:`GitHub Auth` as described in the installation instructions.
 
 Set up permissions
-------------------
+==================
 
-Some features are only available to privileged users. To manage permissions use the
-Auth -> Users section of the django admin interface.
+Some features are only available to privileged users. To manage permissions
+use the Auth -> Users section of the Django admin interface.
+
+Compiling Stylus Files
+======================
+
+If you're updating the Stylus CSS files, you'll need to compile them before
+you can see your updates within the browser. To compile stylus files,
+run the following from the command line::
+
+    ./scripts/compile-stylesheets
+
+The relevant CSS files will be generated and placed within the `media/css`
+directory. You can add a ``-w`` flag to that call to compile stylesheets
+upon save.
 
 Hacking on bleeding edge features
 =================================
@@ -44,6 +49,21 @@ use is disabled by default, to enable: open the django admin interface and in th
 Constance section change the value of ``KUMASCRIPT_TIMEOUT`` parameter to a positive
 value (such as ``2.0`` seconds).
 
+Migrations
+==========
+
+Basically all apps are migrated using Django's migration system.
+
+See the Django documentation for the
+`migration workflow <https://docs.djangoproject.com/en/1.8/topics/migrations/#workflow>`_.
+
+How to run the migrations
+-------------------------
+
+Run the migrations via the Django management command::
+
+    python manage.py migrate
+
 Running the Tests
 =================
 
@@ -52,33 +72,17 @@ suite.
 
 Django tests
 ------------
-If you're not using the vagrant VM, you'll need to add an extra grant in MySQL for
-your database user::
-
-    GRANT ALL ON test_NAME.* TO USER@localhost;
-
-Where ``NAME`` and ``USER`` are the same as the values in your database
-configuration.
-
-The test suite will create and use this database, to keep any data in your
-development database safe from tests.
 
 Running the test suite is easy::
 
-    ./manage.py test -s --noinput --logging-clear-handlers
+    ./manage.py test
 
 Note that this will try (and fail) to run tests that depend on apps disabled
-via ``INSTALLED_APPS``. You should run a subset of tests specified in
-`scripts/build.sh <../scripts/build.sh>`_, at the bottom of the script.
+via ``INSTALLED_APPS``. You should run a subset of tests::
 
-When using the vagrant VM you must `run the tests from the root folder`_, not from
-``/vagrant``::
+    ./manage.py test kuma
 
-    (cd / && /vagrant/manage.py test ...)
-
-For more information, see the `test documentation <tests.rst>`_.
-
-.. _run the tests from the root folder: https://bugzilla.mozilla.org/show_bug.cgi?id=756536#c2
+For more information, see the :doc:`test documentation <tests>`.
 
 Kumascript tests
 ----------------
@@ -86,3 +90,12 @@ Kumascript tests
 If you're changing Kumascript, be sure to run its tests too.
 See https://github.com/mozilla/kumascript
 
+Coding Conventions
+==================
+
+Tests
+-----
+
+* If you're expecting ``reverse`` to return locales in the URL, use
+  ``LocalizingClient`` instead of the default client for the ``TestCase``
+  class.
